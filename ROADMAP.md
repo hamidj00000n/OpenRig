@@ -9,7 +9,7 @@ This roadmap describes planned work. A checklist item is complete only when impl
 - [x] Define English as the default application language
 - [x] Publish contribution, security, and community conduct guidance
 - [x] Add automated GitHub Actions checks for backend tests and frontend build
-- [ ] Select and approve an open-source license
+- [x] Select and publish Apache License 2.0
 
 ## 0.2.x — Cross-platform foundation
 - [ ] Responsive web application

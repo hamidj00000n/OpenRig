@@ -11,12 +11,14 @@ Implemented in this increment:
 - Organization creation by an authenticated user
 - Automatic owner membership for the creator
 - Organization listing restricted to active memberships
-- Initial automated tests for authentication requirements and organization visibility
+- Organization member listing and role administration API (owner/admin authorization rules)
+- Automated tests for authentication, tenant visibility, and organization member-role authorization
 
 Not yet implemented:
 
 - Email verification and password reset
-- Invitations, membership administration, and role/permission management
+- Invitations and membership lifecycle management
+- Granular role/permission scopes and audit trail
 - Department, site, rig, and project hierarchy
 - Database migrations
 - Rate limiting, MFA, and production deployment hardening

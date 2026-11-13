@@ -134,4 +134,4 @@ See [ROADMAP.md](ROADMAP.md) for planned milestones and [docs/IMPLEMENTATION-STA
 
 ## License
 
-A license has not yet been selected for this repository. Until a license is added, do not assume that the code is available for reuse, redistribution, or modification. The maintainers must choose and approve the project license before OpenRig can be presented as an openly licensed software project.
+OpenRig is licensed under the [Apache License, Version 2.0](LICENSE). You may use, modify, and distribute the project in accordance with its terms. The license includes an express patent grant and requires preservation of applicable notices.
