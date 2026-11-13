@@ -174,3 +174,100 @@ def test_user_cannot_access_members_of_another_organization():
         f"/api/v1/organizations/{organization_id}/members", headers=other_owner
     )
     assert response.status_code == 404
+
+
+def test_owner_can_invite_user_and_invitation_is_accepted_once():
+    owner = register_and_login("invite-owner@openrig.dev")
+    organization_id = create_org(owner, "invite-company")
+    invitee = register_and_login("invitee@openrig.dev")
+
+    created = client.post(
+        f"/api/v1/organizations/{organization_id}/invitations",
+        headers=owner,
+        json={"email": "invitee@openrig.dev", "role": "manager"},
+    )
+    assert created.status_code == 201, created.text
+    payload = created.json()
+    assert payload["role"] == "manager"
+    assert payload["token"]
+
+    accepted = client.post(
+        "/api/v1/organizations/invitations/accept",
+        headers=invitee,
+        json={"token": payload["token"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["role"] == "manager"
+
+    repeated = client.post(
+        "/api/v1/organizations/invitations/accept",
+        headers=invitee,
+        json={"token": payload["token"]},
+    )
+    assert repeated.status_code == 404
+    orgs = client.get("/api/v1/organizations", headers=invitee).json()["items"]
+    assert any(item["id"] == organization_id and item["role"] == "manager" for item in orgs)
+
+
+def test_invitation_cannot_be_accepted_by_different_email():
+    owner = register_and_login("invite-owner-two@openrig.dev")
+    organization_id = create_org(owner, "invite-company-two")
+    wrong_user = register_and_login("wrong-person@openrig.dev")
+    created = client.post(
+        f"/api/v1/organizations/{organization_id}/invitations",
+        headers=owner,
+        json={"email": "intended-person@openrig.dev", "role": "member"},
+    )
+    assert created.status_code == 201
+    response = client.post(
+        "/api/v1/organizations/invitations/accept",
+        headers=wrong_user,
+        json={"token": created.json()["token"]},
+    )
+    assert response.status_code == 403
+
+
+def test_admin_cannot_invite_another_administrator():
+    owner = register_and_login("invite-admin-owner@openrig.dev")
+    organization_id = create_org(owner, "invite-admin-company")
+    admin = register_and_login("invite-admin@openrig.dev")
+    admin_user = client.get("/api/v1/auth/me", headers=admin).json()
+    from app.models import OrganizationMembership
+    db = TestingSession()
+    try:
+        db.add(OrganizationMembership(
+            organization_id=organization_id, user_id=admin_user["id"], role="admin"
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/api/v1/organizations/{organization_id}/invitations",
+        headers=admin,
+        json={"email": "new-admin@openrig.dev", "role": "admin"},
+    )
+    assert response.status_code == 403
+
+
+def test_regular_member_cannot_create_invitation():
+    owner = register_and_login("invite-member-owner@openrig.dev")
+    organization_id = create_org(owner, "invite-member-company")
+    member = register_and_login("invite-member@openrig.dev")
+    member_user = client.get("/api/v1/auth/me", headers=member).json()
+    from app.models import OrganizationMembership
+    db = TestingSession()
+    try:
+        db.add(OrganizationMembership(
+            organization_id=organization_id, user_id=member_user["id"], role="member"
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/api/v1/organizations/{organization_id}/invitations",
+        headers=member,
+        json={"email": "another@openrig.dev", "role": "member"},
+    )
+    assert response.status_code == 403

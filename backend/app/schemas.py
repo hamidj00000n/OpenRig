@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -44,9 +46,6 @@ class OrganizationList(BaseModel):
     items: list[OrganizationRead]
 
 
-from typing import Literal
-
-
 class OrganizationMemberRoleUpdate(BaseModel):
     role: Literal["admin", "manager", "member", "owner"]
 
@@ -62,3 +61,29 @@ class OrganizationMemberRead(BaseModel):
 
 class OrganizationMemberList(BaseModel):
     items: list[OrganizationMemberRead]
+
+
+class InvitationCreate(BaseModel):
+    email: EmailStr
+    role: Literal["admin", "manager", "member"] = "member"
+
+
+class InvitationRead(BaseModel):
+    id: str
+    email: EmailStr
+    role: str
+    status: str
+    expires_at: datetime
+    created_at: datetime
+
+
+class InvitationCreated(InvitationRead):
+    token: str
+
+
+class InvitationList(BaseModel):
+    items: list[InvitationRead]
+
+
+class InvitationAccept(BaseModel):
+    token: str = Field(min_length=32, max_length=128)
