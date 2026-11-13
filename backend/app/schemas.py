@@ -42,3 +42,23 @@ class OrganizationRead(BaseModel):
 
 class OrganizationList(BaseModel):
     items: list[OrganizationRead]
+
+
+from typing import Literal
+
+
+class OrganizationMemberRoleUpdate(BaseModel):
+    role: Literal["admin", "manager", "member", "owner"]
+
+
+class OrganizationMemberRead(BaseModel):
+    user_id: str
+    email: EmailStr
+    full_name: str
+    role: str
+    is_active: bool
+    joined_at: datetime
+
+
+class OrganizationMemberList(BaseModel):
+    items: list[OrganizationMemberRead]
