@@ -45,7 +45,7 @@ def register_and_login(email: str):
 
 
 def test_user_can_create_and_list_own_organization():
-    headers = register_and_login("owner@example.test")
+    headers = register_and_login("owner@openrig.dev")
     created = client.post("/api/v1/organizations", headers=headers, json={
         "name": "North Drilling", "slug": "north-drilling"
     })
@@ -56,11 +56,11 @@ def test_user_can_create_and_list_own_organization():
 
 
 def test_organizations_are_not_visible_to_other_users():
-    owner_headers = register_and_login("first@example.test")
+    owner_headers = register_and_login("first@openrig.dev")
     client.post("/api/v1/organizations", headers=owner_headers, json={
         "name": "Private Company", "slug": "private-company"
     })
-    other_headers = register_and_login("second@example.test")
+    other_headers = register_and_login("second@openrig.dev")
     listed = client.get("/api/v1/organizations", headers=other_headers)
     assert listed.status_code == 200
     assert listed.json()["items"] == []
