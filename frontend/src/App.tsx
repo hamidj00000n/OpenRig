@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Activity, Building2, ChevronDown, CircleHelp, Drill, Globe2, HardHat, LogOut, Plus, ShieldCheck, Warehouse } from "lucide-react";
+import { Activity, Building2, CircleHelp, Drill, Globe2, HardHat, LogOut, Plus, ShieldCheck, Warehouse, Users, RefreshCw } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 type Org = { id: string; name: string; slug: string; role: string; created_at: string };
 type User = { id: string; email: string; full_name: string; preferred_language: string };
+type Member = { user_id: string; email: string; full_name: string; role: string; is_active: boolean; joined_at: string };
 
 const copy = {
   en: {
@@ -15,7 +16,13 @@ const copy = {
     logout: "Sign out", dashboard: "Overview", rigs: "Rigs", equipment: "Equipment",
     warehouse: "Warehouse", maintenance: "Maintenance", procurement: "Procurement",
     secure: "Organization-scoped access", loading: "Loading…", switch: "Language",
-    failed: "Something went wrong. Check the API connection and try again.", role: "Your role"
+    failed: "Something went wrong. Check the API connection and try again.", role: "Your role",
+    members: "Organization members", membersHint: "View members and manage their organization roles.",
+    noPermission: "Only organization owners and administrators can view members.",
+    memberName: "Member", memberEmail: "Email", memberRole: "Role", status: "Status",
+    active: "Active", inactive: "Inactive", save: "Save", saved: "Role updated successfully.",
+    memberLoadFailed: "Could not load organization members.", roleOwner: "Owner", roleAdmin: "Administrator",
+    roleManager: "Manager", roleMember: "Member", updating: "Updating…", refresh: "Refresh"
   },
   fa: {
     subtitle: "سامانه مدیریت عملیات حفاری", signIn: "ورود", register: "ایجاد حساب",
@@ -26,20 +33,27 @@ const copy = {
     logout: "خروج", dashboard: "نمای کلی", rigs: "دکل‌ها", equipment: "تجهیزات",
     warehouse: "انبار", maintenance: "تعمیرات", procurement: "تدارکات",
     secure: "دسترسی محدود به سازمان", loading: "در حال بارگذاری…", switch: "زبان",
-    failed: "خطا رخ داد. اتصال API را بررسی و دوباره تلاش کنید.", role: "نقش شما"
+    failed: "خطا رخ داد. اتصال API را بررسی و دوباره تلاش کنید.", role: "نقش شما",
+    members: "اعضای سازمان", membersHint: "مشاهده اعضا و مدیریت نقش سازمانی آن‌ها.",
+    noPermission: "فقط مالک و مدیر سازمان می‌توانند اعضا را مشاهده کنند.",
+    memberName: "عضو", memberEmail: "ایمیل", memberRole: "نقش", status: "وضعیت",
+    active: "فعال", inactive: "غیرفعال", save: "ذخیره", saved: "نقش با موفقیت تغییر کرد.",
+    memberLoadFailed: "بارگذاری اعضای سازمان انجام نشد.", roleOwner: "مالک", roleAdmin: "مدیر",
+    roleManager: "سرپرست", roleMember: "عضو", updating: "در حال بروزرسانی…", refresh: "بروزرسانی"
   }
 };
 
 export default function App() {
-  const [language, setLanguage] = useState<"en" | "fa">(() => {
-    const saved = localStorage.getItem("openrig-language");
-    return saved === "fa" ? "fa" : "en";
-  });
+  const [language, setLanguage] = useState<"en" | "fa">(() => localStorage.getItem("openrig-language") === "fa" ? "fa" : "en");
   const t = copy[language];
   const [token, setToken] = useState(() => localStorage.getItem("openrig-token") || "");
   const [user, setUser] = useState<User | null>(null);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [selected, setSelected] = useState<Org | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberBusy, setMemberBusy] = useState(false);
+  const [memberError, setMemberError] = useState("");
+  const [memberNotice, setMemberNotice] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,30 +86,45 @@ export default function App() {
     setOrgs((await orgResponse.json()).items);
   }
 
+  async function loadMembers(org = selected) {
+    if (!org || !["owner", "admin"].includes(org.role)) { setMembers([]); return; }
+    setMemberBusy(true); setMemberError(""); setMemberNotice("");
+    try {
+      const data = await request(`/api/v1/organizations/${org.id}/members`);
+      setMembers(data.items);
+    } catch (e) {
+      setMemberError(e instanceof Error ? e.message : t.memberLoadFailed);
+    } finally { setMemberBusy(false); }
+  }
+
   useEffect(() => {
     if (token) loadWorkspace().catch(() => signOut());
     // Initial session restoration only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    setMembers([]);
+    setMemberError("");
+    setMemberNotice("");
+    if (selected && ["owner", "admin"].includes(selected.role)) loadMembers(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, token]);
+
   function signOut() {
     localStorage.removeItem("openrig-token");
-    setToken(""); setUser(null); setOrgs([]); setSelected(null);
+    setToken(""); setUser(null); setOrgs([]); setSelected(null); setMembers([]);
   }
 
   async function submitAuth(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
     const form = new FormData(event.currentTarget);
-    const payload: Record<string, string> = {
-      email: String(form.get("email")), password: String(form.get("password"))
-    };
+    const payload: Record<string, string> = { email: String(form.get("email")), password: String(form.get("password")) };
     if (mode === "register") payload.full_name = String(form.get("full_name"));
     try {
       const data = await request(`/api/v1/auth/${mode}`, { method: "POST", body: JSON.stringify(payload) });
-      if (mode === "register") {
-        setMode("login");
-        setError("Account created. Please sign in.");
-      } else {
+      if (mode === "register") { setMode("login"); setError("Account created. Please sign in."); }
+      else {
         localStorage.setItem("openrig-token", data.access_token);
         setToken(data.access_token);
         await loadWorkspace(data.access_token);
@@ -108,15 +137,26 @@ export default function App() {
     event.preventDefault(); setBusy(true); setError("");
     const form = new FormData(event.currentTarget);
     try {
-      await request("/api/v1/organizations", {
-        method: "POST",
-        body: JSON.stringify({ name: String(form.get("name")), slug: String(form.get("slug")).toLowerCase() })
-      });
-      await loadWorkspace();
-      setShowCreate(false);
+      await request("/api/v1/organizations", { method: "POST", body: JSON.stringify({ name: String(form.get("name")), slug: String(form.get("slug")).toLowerCase() }) });
+      await loadWorkspace(); setShowCreate(false);
     } catch (e) { setError(e instanceof Error ? e.message : t.failed); }
     finally { setBusy(false); }
   }
+
+  async function changeMemberRole(member: Member, role: string) {
+    if (!selected || role === member.role) return;
+    setMemberBusy(true); setMemberError(""); setMemberNotice("");
+    try {
+      await request(`/api/v1/organizations/${selected.id}/members/${member.user_id}/role`, {
+        method: "PATCH", body: JSON.stringify({ role })
+      });
+      setMemberNotice(t.saved);
+      await loadMembers(selected);
+    } catch (e) { setMemberError(e instanceof Error ? e.message : t.failed); }
+    finally { setMemberBusy(false); }
+  }
+
+  const roleLabel = (role: string) => role === "owner" ? t.roleOwner : role === "admin" ? t.roleAdmin : role === "manager" ? t.roleManager : t.roleMember;
 
   if (!token || !user) return (
     <main className="auth-shell">
@@ -129,8 +169,7 @@ export default function App() {
       <section className="auth-panel">
         <button className="language-switch" onClick={() => setLanguage(language === "en" ? "fa" : "en")}><Globe2 size={16}/>{language === "en" ? "فارسی" : "English"}</button>
         <div className="form-wrap">
-          <div className="eyebrow">OPENRIG WORKSPACE</div>
-          <h2>{mode === "login" ? t.signIn : t.register}</h2>
+          <div className="eyebrow">OPENRIG WORKSPACE</div><h2>{mode === "login" ? t.signIn : t.register}</h2>
           <form onSubmit={submitAuth}>
             {mode === "register" && <label>{t.fullName}<input name="full_name" minLength={2} required autoComplete="name"/></label>}
             <label>{t.email}<input name="email" type="email" required autoComplete="email"/></label>
@@ -172,8 +211,27 @@ export default function App() {
           {showCreate && <form className="create-card" onSubmit={createOrganization}><h3>{t.createOrg}</h3><label>{t.orgName}<input name="name" required minLength={2}/></label><label>{t.slug}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*"/></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowCreate(false)}>{t.cancel}</button><button className="primary-button" disabled={busy}>{t.create}</button></div></form>}
           <div className="section-heading"><h3>{t.organizations}</h3><span>{orgs.length} {orgs.length === 1 ? "organization" : "organizations"}</span></div>
           {orgs.length === 0 ? <div className="empty-state"><Building2 size={30}/><p>{t.noOrgs}</p><button className="secondary-button" onClick={() => setShowCreate(true)}>{t.createOrg}</button></div> :
-            <div className="org-grid">{orgs.map(org => <button className={selected?.id === org.id ? "org-card selected" : "org-card"} key={org.id} onClick={() => setSelected(org)}><div className="org-icon"><Building2 size={21}/></div><strong>{org.name}</strong><span>{org.slug}</span><small>{t.role}: {org.role}</small></button>)}</div>}
-          {selected && <div className="selected-banner"><ShieldCheck size={18}/><span>{selected.name} · {selected.role}</span><span className="scope-tag">Organization scope</span></div>}
+            <div className="org-grid">{orgs.map(org => <button className={selected?.id === org.id ? "org-card selected" : "org-card"} key={org.id} onClick={() => setSelected(org)}><div className="org-icon"><Building2 size={21}/></div><strong>{org.name}</strong><span>{org.slug}</span><small>{t.role}: {roleLabel(org.role)}</small></button>)}</div>}
+          {selected && <div className="selected-banner"><ShieldCheck size={18}/><span>{selected.name} · {roleLabel(selected.role)}</span><span className="scope-tag">Organization scope</span></div>}
+          {selected && <section className="members-panel">
+            <div className="members-heading"><div><h3><Users size={18}/>{t.members}</h3><p>{t.membersHint}</p></div>
+              {["owner", "admin"].includes(selected.role) && <button className="secondary-button refresh-button" onClick={() => loadMembers(selected)} disabled={memberBusy}><RefreshCw size={14}/>{t.refresh}</button>}
+            </div>
+            {!["owner", "admin"].includes(selected.role) ? <p className="small-muted">{t.noPermission}</p> : memberBusy && members.length === 0 ? <p className="small-muted">{t.loading}</p> : <>
+              {memberError && <p className="error-text">{memberError}</p>}
+              {memberNotice && <p className="success-text">{memberNotice}</p>}
+              <div className="member-table-wrap"><table className="member-table"><thead><tr><th>{t.memberName}</th><th>{t.memberEmail}</th><th>{t.memberRole}</th><th>{t.status}</th></tr></thead>
+                <tbody>{members.map(member => {
+                  const canEdit = member.role !== "owner" && (selected.role === "owner" || (selected.role === "admin" && member.role !== "admin"));
+                  return <tr key={member.user_id}><td><strong>{member.full_name}</strong></td><td>{member.email}</td><td>
+                    {canEdit ? <select aria-label={`${t.memberRole}: ${member.full_name}`} value={member.role} disabled={memberBusy} onChange={e => changeMemberRole(member, e.target.value)}>
+                      {selected.role === "owner" && <option value="admin">{t.roleAdmin}</option>}
+                      <option value="manager">{t.roleManager}</option><option value="member">{t.roleMember}</option>
+                    </select> : <span className={`role-pill role-${member.role}`}>{roleLabel(member.role)}</span>}
+                  </td><td><span className={member.is_active ? "status-active" : "status-inactive"}>{member.is_active ? t.active : t.inactive}</span></td></tr>;
+                })}</tbody></table></div>
+            </>}
+          </section>}
         </section>
       </main>
     </div>
