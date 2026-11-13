@@ -1,46 +1,137 @@
 # OpenRig
 
-Open-source, cross-platform drilling rig operations management platform.
+**Open-source drilling rig operations management platform**
 
-## Platform delivery
+OpenRig is an early-stage project to build a cross-platform operations management system for land and offshore drilling rigs. Its intended users include drilling contractors and rig operations, maintenance, warehouse, and procurement teams.
 
-| Platform | Delivery |
+> **Project maturity:** OpenRig is under active early-stage development. The current repository contains an initial identity and organization-management foundation. The broader operational modules described below are planned, not yet delivered. OpenRig is not production-ready.
+
+[![CI](https://github.com/hamidj00000n/OpenRig/actions/workflows/ci.yml/badge.svg)](https://github.com/hamidj00000n/OpenRig/actions/workflows/ci.yml)
+
+## Why OpenRig?
+
+Drilling operations depend on connected workflows across equipment, maintenance, inventory, procurement, suppliers, and operational reporting. OpenRig aims to provide a coherent platform for these workflows, with a consistent data model and organization-level access controls.
+
+## Current implementation
+
+The current foundation includes:
+
+- User registration and password hashing with Argon2
+- Short-lived signed bearer access tokens
+- Authenticated user profile endpoint
+- Organization creation and membership listing
+- Organization member listing and role administration
+- Automated backend tests for authentication, organization visibility, and member-role authorization
+- Initial React/TypeScript application shell with English and Persian language support
+
+See [Implementation Status](docs/IMPLEMENTATION-STATUS.md) for the implemented scope and known gaps.
+
+## Planned product areas
+
+- Rig, site, department, and project registers
+- Land and offshore rig operations
+- Equipment register and technical records
+- Spare parts and warehouse inventory
+- Procurement, RFQs, quotations, and purchase orders
+- Preventive and corrective maintenance
+- Supplier management
+- Dashboards, reports, exports, and audit history
+
+These are roadmap goals and must not be interpreted as existing features.
+
+## Platform and technology
+
+| Layer | Technology / direction |
 |---|---|
-| Android | APK for direct installation; AAB for store distribution when applicable |
-| Windows | EXE or MSI installer |
-| iPhone and iPad | Responsive Web App / PWA, installable from Safari using Add to Home Screen |
-| Desktop browsers | Responsive web application |
+| Web client | React, TypeScript, Vite |
+| API | Python, FastAPI |
+| ORM and data access | SQLAlchemy |
+| Local development database | SQLite |
+| Production database target | PostgreSQL |
+| Windows desktop target | Tauri 2 (planned) |
+| Android target | APK/AAB packaging (planned) |
+| iPhone/iPad target | Responsive web app / PWA (planned) |
 
-The initial iPhone/iPad strategy is PWA; a separate native iOS application is not in scope.
+English is the default interface language. Persian is an optional RTL locale.
 
-## Language
+## Getting started
 
-**English is the default application language.** Persian is optional. The interface supports English LTR and Persian RTL. If no saved preference exists, English is used.
+### Prerequisites
 
-## Core capabilities
+- Python 3.11 or newer
+- Node.js 22 or newer (LTS recommended)
+- npm
 
-- Secure authentication and session management
-- Multi-organization tenancy with strict data isolation
-- Organization structure, departments, operating sites, rigs, and projects
-- User invitations, roles, and permission scopes
-- Equipment, spare parts, warehouse, procurement, suppliers, and maintenance
-- Reports, dashboards, attachments, and audit history
+### Backend
 
-## Architecture direction
+From the repository root:
 
-- Web: React, TypeScript, and Vite
-- API: Python and FastAPI
-- Data: PostgreSQL in production; SQLite for local development
-- Windows desktop: Tauri 2
-- Android: installable application package based on the shared application
-- iPhone/iPad: PWA based on the shared responsive web client
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+Copy-Item .env.example .env
+pytest -v
+uvicorn app.main:app --reload
+```
 
-See the documents in the docs folder for platform, identity, security, and localization requirements.
+The API is available at `http://127.0.0.1:8000` and its interactive documentation at `http://127.0.0.1:8000/docs`.
 
-## Project status
+For macOS/Linux, activate the environment with `source .venv/bin/activate`. Review [backend/README.md](backend/README.md) and [backend/.env.example](backend/.env.example) before running the API.
 
-OpenRig is in early-stage development. Roadmap items are planned work and must not be interpreted as completed or production-ready features.
+### Frontend
 
-## Releases
+In a second terminal:
 
-Installers and release notes will be published on the GitHub Releases page. Android APK/AAB and Windows EXE/MSI assets will be attached only after successful builds and validation. PWA updates are deployed through the web application.
+```powershell
+cd frontend
+npm install
+npm run build
+npm run dev
+```
+
+Vite prints the local development URL when the server starts.
+
+## Quality checks
+
+Run backend tests:
+
+```bash
+cd backend
+pytest -v
+```
+
+Build the frontend:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+The GitHub Actions workflow runs the backend test suite and frontend production build on pushes and pull requests.
+
+## Security and data confidentiality
+
+Tenant isolation and customer confidentiality are core design requirements. The project security policy documents the intended controls and explicitly distinguishes requirements from implemented protections.
+
+- Read [Security Policy](SECURITY.md) before reporting a vulnerability.
+- Read [Tenant Isolation and Security Requirements](docs/SECURITY-AND-TENANT-ISOLATION.md).
+- Do not use real customer, employee, supplier, operational, or other confidential data in development or issue reports.
+- Do not commit secrets, credentials, private keys, production database exports, or customer documents.
+
+The current application is an early development scaffold. It has not undergone an independent security audit and must not be deployed with sensitive production data.
+
+## Contributing
+
+Contributions, bug reports, and technical discussions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), follow the project Code of Conduct, and open an issue before starting large or breaking changes.
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned milestones and [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEMENTATION-STATUS.md) for current implementation evidence.
+
+## License
+
+A license has not yet been selected for this repository. Until a license is added, do not assume that the code is available for reuse, redistribution, or modification. The maintainers must choose and approve the project license before OpenRig can be presented as an openly licensed software project.

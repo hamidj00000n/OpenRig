@@ -1,28 +1,34 @@
 # OpenRig Roadmap
 
-This roadmap describes planned work. A checklist item is not complete until implementation and validation evidence are available.
+This roadmap describes planned work. A checklist item is complete only when implementation and validation evidence are available.
 
-## 0.1.x — Foundation
+## 0.1.x — Project foundation
 - [x] Initial repository and project definition
 - [x] Document cross-platform delivery strategy
 - [x] Document identity, organization, and tenant-isolation requirements
 - [x] Define English as the default application language
-- [ ] Establish coding standards and CI quality gates
+- [x] Publish contribution, security, and community conduct guidance
+- [x] Add automated GitHub Actions checks for backend tests and frontend build
+- [ ] Select and approve an open-source license
 
 ## 0.2.x — Cross-platform foundation
 - [ ] Responsive web application
-- [ ] PWA manifest and service worker for iPhone/iPad home-screen installation
+- [ ] PWA service worker and validated iPhone/iPad home-screen installation
 - [ ] Tauri 2 Windows packaging pipeline
 - [ ] Android APK/AAB packaging pipeline
 - [ ] Versioned release notes and artifact checksums
 
 ## 0.3.x — Identity and organizations
-- [ ] Secure sign-in, sign-out, password reset, and session management
-- [ ] Organization registration and lifecycle management
-- [ ] Organization memberships and invitations
-- [ ] Role-based and scope-based permissions
-- [ ] Automated tenant-isolation tests
-- [ ] Organization administration and audit trail
+- [x] User registration and password hashing
+- [x] Short-lived bearer access tokens
+- [x] Organization creation and membership listing
+- [x] Organization member listing and initial role administration API
+- [ ] Email verification and password reset
+- [ ] Invitations and membership lifecycle management
+- [ ] Granular role- and scope-based permissions
+- [ ] Database migrations
+- [ ] Rate limiting and MFA
+- [ ] Comprehensive tenant-isolation tests and audit trail
 
 ## 0.4.x — Organization structure and rig register
 - [ ] Departments, sites, projects, and rig hierarchy
@@ -46,6 +52,7 @@ This roadmap describes planned work. A checklist item is not complete until impl
 - [ ] Export and scheduled reporting
 
 ## 1.0.0 — Stable release
+- [ ] Customer-controlled encryption/decryption architecture independently reviewed
 - [ ] Independent security review and production deployment guide
 - [ ] Tested backup and restore
 - [ ] Validated Windows installer
