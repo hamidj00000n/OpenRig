@@ -1,0 +1,12 @@
+{
+  "name": "OpenRig",
+  "short_name": "OpenRig",
+  "description": "Drilling rig operations management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101a2b",
+  "theme_color": "#101a2b",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": []
+}
