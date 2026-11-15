@@ -67,3 +67,29 @@ class OrganizationInvitation(Base):
     created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+from sqlalchemy import Text
+
+class OrganizationPermission(Base):
+    __tablename__ = "organization_permissions"
+    __table_args__ = (UniqueConstraint("organization_id", "role", "module", name="uq_org_role_module"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(30), nullable=False)
+    module: Mapped[str] = mapped_column(String(50), nullable=False)
+    can_view: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    can_create: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    can_update: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    can_delete: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    details: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)

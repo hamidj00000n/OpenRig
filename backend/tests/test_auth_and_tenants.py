@@ -271,3 +271,37 @@ def test_regular_member_cannot_create_invitation():
         json={"email": "another@openrig.dev", "role": "member"},
     )
     assert response.status_code == 403
+
+
+def test_owner_can_configure_permissions_and_read_audit_log():
+    owner = register_and_login("perm-owner@openrig.dev")
+    org_id = create_org(owner, "perm-org")
+    response = client.put(f"/api/v1/organizations/{org_id}/permissions", headers=owner,
+        json={"role":"member","module":"warehouse","can_view":True,"can_create":False,"can_update":False,"can_delete":False})
+    assert response.status_code == 200, response.text
+    logs = client.get(f"/api/v1/organizations/{org_id}/audit-logs", headers=owner)
+    assert logs.status_code == 200
+    assert any(item["action"] == "permission.updated" for item in logs.json()["items"])
+
+
+def test_non_owner_cannot_configure_permissions():
+    owner = register_and_login("perm-owner2@openrig.dev")
+    org_id = create_org(owner, "perm-org2")
+    member = register_and_login("perm-member@openrig.dev")
+    user = client.get("/api/v1/auth/me", headers=member).json()
+    from app.models import OrganizationMembership
+    db = TestingSession()
+    try:
+        db.add(OrganizationMembership(organization_id=org_id,user_id=user["id"],role="member")); db.commit()
+    finally: db.close()
+    response = client.put(f"/api/v1/organizations/{org_id}/permissions",headers=member,
+        json={"role":"member","module":"warehouse","can_view":True})
+    assert response.status_code == 403
+
+
+def test_audit_logs_are_tenant_scoped():
+    owner = register_and_login("audit-owner@openrig.dev")
+    org_id = create_org(owner, "audit-private")
+    outsider = register_and_login("audit-outsider@openrig.dev")
+    response = client.get(f"/api/v1/organizations/{org_id}/audit-logs",headers=outsider)
+    assert response.status_code == 404

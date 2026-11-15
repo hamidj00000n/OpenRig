@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.audit import record_audit
 from app.dependencies import get_current_user
 from app.models import Organization, OrganizationInvitation, OrganizationMembership, User
 from app.schemas import InvitationAccept, InvitationCreate, InvitationCreated, InvitationList, InvitationRead
@@ -66,6 +67,8 @@ def create_invitation(
         created_by_user_id=current_user.id,
     )
     db.add(invitation)
+    db.flush()
+    record_audit(db, organization_id, current_user.id, "invitation.created", "invitation", invitation.id, {"email": email, "role": payload.role})
     db.commit()
     db.refresh(invitation)
     return InvitationCreated(
@@ -133,6 +136,7 @@ def accept_invitation(
         ))
     invitation.status = "accepted"
     invitation.accepted_at = now
+    record_audit(db, invitation.organization_id, current_user.id, "invitation.accepted", "invitation", invitation.id, {"email": invitation.email, "role": invitation.role})
     db.commit()
     organization = db.get(Organization, invitation.organization_id)
     return {"organization_id": organization.id, "organization_name": organization.name, "role": invitation.role}

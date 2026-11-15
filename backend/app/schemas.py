@@ -87,3 +87,34 @@ class InvitationList(BaseModel):
 
 class InvitationAccept(BaseModel):
     token: str = Field(min_length=32, max_length=128)
+
+class PermissionRead(BaseModel):
+    role: Literal["admin", "manager", "member"]
+    module: str
+    can_view: bool
+    can_create: bool
+    can_update: bool
+    can_delete: bool
+
+class PermissionUpdate(BaseModel):
+    role: Literal["admin", "manager", "member"]
+    module: Literal["rigs", "equipment", "warehouse", "maintenance", "procurement", "reports"]
+    can_view: bool = False
+    can_create: bool = False
+    can_update: bool = False
+    can_delete: bool = False
+
+class PermissionList(BaseModel):
+    items: list[PermissionRead]
+
+class AuditLogRead(BaseModel):
+    id: str
+    actor_user_id: str | None
+    action: str
+    target_type: str
+    target_id: str | None
+    details: str
+    created_at: datetime
+
+class AuditLogList(BaseModel):
+    items: list[AuditLogRead]

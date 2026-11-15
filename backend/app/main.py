@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import CORS_ORIGINS
 from app.database import Base, engine
 from app import models  # noqa: F401
-from app.routers import auth, organizations, invitations
+from app.routers import auth, organizations, invitations, permissions
 
 app = FastAPI(
     title="OpenRig API",
     description="OpenRig authentication, organization, and invitation services",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 app.add_middleware(
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(organizations.router)
 app.include_router(invitations.router)
+app.include_router(permissions.router)
 
 
 @app.on_event("startup")

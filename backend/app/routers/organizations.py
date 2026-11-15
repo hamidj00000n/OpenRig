@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Organization, OrganizationMembership, User
+from app.audit import record_audit
 from app.schemas import (
     OrganizationCreate,
     OrganizationList,
@@ -146,7 +147,9 @@ def update_organization_member_role(
         if target.role == "admin" or payload.role == "admin":
             raise HTTPException(status_code=403, detail="Only the owner can manage administrators")
 
+    previous_role = target.role
     target.role = payload.role
+    record_audit(db, organization_id, current_user.id, "member.role_updated", "membership", target.id, {"user_id": member_user_id, "before": previous_role, "after": payload.role})
     db.commit()
     db.refresh(target)
     user = db.get(User, target.user_id)
