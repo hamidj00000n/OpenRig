@@ -1,0 +1,10 @@
+[package]
+name = "openrig"
+version = "0.4.0"
+description = "OpenRig drilling operations management desktop client"
+authors = ["OpenRig Contributors"]
+edition = "2021"
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+tauri = { version = "2", features = [] }

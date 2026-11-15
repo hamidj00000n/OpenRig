@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, Building2, CircleHelp, Drill, Globe2, HardHat, LogOut, Plus, ShieldCheck, Warehouse, Users, RefreshCw } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = (window.OPENRIG_CONFIG?.apiUrl || import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 type Org = { id: string; name: string; slug: string; role: string; created_at: string };
 type User = { id: string; email: string; full_name: string; preferred_language: string };
 type Member = { user_id: string; email: string; full_name: string; role: string; is_active: boolean; joined_at: string };
