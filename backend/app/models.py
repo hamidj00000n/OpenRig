@@ -57,8 +57,6 @@ class OrganizationMembership(Base):
 
 class OrganizationInvitation(Base):
     __tablename__ = "organization_invitations"
-    __table_args__ = (UniqueConstraint("organization_id", "email", "status", name="uq_org_invitation_email_status"),)
-
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(320), index=True, nullable=False)

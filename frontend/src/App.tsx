@@ -5,6 +5,7 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 type Org = { id: string; name: string; slug: string; role: string; created_at: string };
 type User = { id: string; email: string; full_name: string; preferred_language: string };
 type Member = { user_id: string; email: string; full_name: string; role: string; is_active: boolean; joined_at: string };
+type Invitation = { id: string; email: string; role: string; status: string; expires_at: string; created_at: string };
 
 const copy = {
   en: {
@@ -22,7 +23,7 @@ const copy = {
     memberName: "Member", memberEmail: "Email", memberRole: "Role", status: "Status",
     active: "Active", inactive: "Inactive", save: "Save", saved: "Role updated successfully.",
     memberLoadFailed: "Could not load organization members.", roleOwner: "Owner", roleAdmin: "Administrator",
-    roleManager: "Manager", roleMember: "Member", updating: "Updating…", refresh: "Refresh"
+    roleManager: "Manager", roleMember: "Member", updating: "Updating…", refresh: "Refresh", invite: "Invite member", inviteHint: "Invite a colleague by email. The link is shown once; share it securely.", inviteEmail: "Invitee email", inviteRole: "Access role", pendingInvites: "Pending invitations", noInvites: "No pending invitations.", createInvite: "Create invitation", copyLink: "Copy invitation link", linkReady: "Invitation link created. Copy and share it securely.", copied: "Link copied.", inviteLoadFailed: "Could not load invitations.", inviteAccepted: "Invitation accepted. Your organization is now available.", inviteToken: "Invitation token"
   },
   fa: {
     subtitle: "سامانه مدیریت عملیات حفاری", signIn: "ورود", register: "ایجاد حساب",
@@ -39,7 +40,7 @@ const copy = {
     memberName: "عضو", memberEmail: "ایمیل", memberRole: "نقش", status: "وضعیت",
     active: "فعال", inactive: "غیرفعال", save: "ذخیره", saved: "نقش با موفقیت تغییر کرد.",
     memberLoadFailed: "بارگذاری اعضای سازمان انجام نشد.", roleOwner: "مالک", roleAdmin: "مدیر",
-    roleManager: "سرپرست", roleMember: "عضو", updating: "در حال بروزرسانی…", refresh: "بروزرسانی"
+    roleManager: "سرپرست", roleMember: "عضو", updating: "در حال بروزرسانی…", refresh: "بروزرسانی", invite: "دعوت عضو", inviteHint: "برای دعوت همکار، ایمیل و سطح دسترسی را وارد کنید. لینک فقط یک‌بار نمایش داده می‌شود؛ آن را امن ارسال کنید.", inviteEmail: "ایمیل فرد دعوت‌شده", inviteRole: "سطح دسترسی", pendingInvites: "دعوت‌های در انتظار", noInvites: "دعوت در انتظاری وجود ندارد.", createInvite: "ایجاد دعوت‌نامه", copyLink: "کپی لینک دعوت", linkReady: "لینک دعوت ایجاد شد. آن را کپی و به‌صورت امن ارسال کنید.", copied: "لینک کپی شد.", inviteLoadFailed: "بارگذاری دعوت‌ها انجام نشد.", inviteAccepted: "دعوت با موفقیت پذیرفته شد. سازمان در دسترس شماست.", inviteToken: "کد دعوت"
   }
 };
 
@@ -51,6 +52,12 @@ export default function App() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [selected, setSelected] = useState<Org | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteNotice, setInviteNotice] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const inviteToken = new URLSearchParams(window.location.search).get("invite") || "";
   const [memberBusy, setMemberBusy] = useState(false);
   const [memberError, setMemberError] = useState("");
   const [memberNotice, setMemberNotice] = useState("");
@@ -86,12 +93,38 @@ export default function App() {
     setOrgs((await orgResponse.json()).items);
   }
 
+  async function loadInvitations(org = selected) {
+    if (!org || !["owner", "admin"].includes(org.role)) { setInvitations([]); return; }
+    try { const data = await request(`/api/v1/organizations/${org.id}/invitations`); setInvitations(data.items); }
+    catch (e) { setInviteError(e instanceof Error ? e.message : t.inviteLoadFailed); }
+  }
+
+  async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!selected) return; const formElement = event.currentTarget; setInviteBusy(true); setInviteError(""); setInviteNotice(""); setInviteLink("");
+    const form = new FormData(formElement);
+    try {
+      const data = await request(`/api/v1/organizations/${selected.id}/invitations`, { method: "POST", body: JSON.stringify({ email: String(form.get("email")), role: String(form.get("role")) }) });
+      const link = window.location.origin + window.location.pathname + "?invite=" + encodeURIComponent(data.token);
+      setInviteLink(link); setInviteNotice(t.linkReady); formElement.reset(); await loadInvitations(selected);
+    } catch (e) { setInviteError(e instanceof Error ? e.message : t.failed); }
+    finally { setInviteBusy(false); }
+  }
+
+  async function acceptPendingInvitation(accessToken: string) {
+    if (!inviteToken) return;
+    const response = await fetch(API + "/api/v1/organizations/invitations/accept", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ token: inviteToken }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || t.failed);
+    window.history.replaceState({}, "", window.location.pathname); setError(t.inviteAccepted);
+  }
+
   async function loadMembers(org = selected) {
     if (!org || !["owner", "admin"].includes(org.role)) { setMembers([]); return; }
     setMemberBusy(true); setMemberError(""); setMemberNotice("");
     try {
       const data = await request(`/api/v1/organizations/${org.id}/members`);
       setMembers(data.items);
+      await loadInvitations(org);
     } catch (e) {
       setMemberError(e instanceof Error ? e.message : t.memberLoadFailed);
     } finally { setMemberBusy(false); }
@@ -104,7 +137,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setMembers([]);
+    setMembers([]); setInvitations([]); setInviteLink(""); setInviteError("");
     setMemberError("");
     setMemberNotice("");
     if (selected && ["owner", "admin"].includes(selected.role)) loadMembers(selected);
@@ -127,6 +160,7 @@ export default function App() {
       else {
         localStorage.setItem("openrig-token", data.access_token);
         setToken(data.access_token);
+        await acceptPendingInvitation(data.access_token);
         await loadWorkspace(data.access_token);
       }
     } catch (e) { setError(e instanceof Error ? e.message : t.failed); }
@@ -213,6 +247,19 @@ export default function App() {
           {orgs.length === 0 ? <div className="empty-state"><Building2 size={30}/><p>{t.noOrgs}</p><button className="secondary-button" onClick={() => setShowCreate(true)}>{t.createOrg}</button></div> :
             <div className="org-grid">{orgs.map(org => <button className={selected?.id === org.id ? "org-card selected" : "org-card"} key={org.id} onClick={() => setSelected(org)}><div className="org-icon"><Building2 size={21}/></div><strong>{org.name}</strong><span>{org.slug}</span><small>{t.role}: {roleLabel(org.role)}</small></button>)}</div>}
           {selected && <div className="selected-banner"><ShieldCheck size={18}/><span>{selected.name} · {roleLabel(selected.role)}</span><span className="scope-tag">Organization scope</span></div>}
+          {selected && ["owner", "admin"].includes(selected.role) && <section className="members-panel invitations-panel">
+            <div className="members-heading"><div><h3><Users size={18}/>{t.invite}</h3><p>{t.inviteHint}</p></div></div>
+            <form className="invite-form" onSubmit={createInvitation}>
+              <label>{t.inviteEmail}<input name="email" type="email" required placeholder="colleague@company.com"/></label>
+              <label>{t.inviteRole}<select name="role" defaultValue="member"><option value="member">{t.roleMember}</option><option value="manager">{t.roleManager}</option>{selected.role === "owner" && <option value="admin">{t.roleAdmin}</option>}</select></label>
+              <button className="primary-button compact" disabled={inviteBusy}>{inviteBusy ? t.loading : t.createInvite}</button>
+            </form>
+            {inviteError && <p className="error-text">{inviteError}</p>}
+            {inviteNotice && <p className="success-text">{inviteNotice}</p>}
+            {inviteLink && <div className="invite-link"><input readOnly value={inviteLink} aria-label={t.inviteToken}/><button className="secondary-button" type="button" onClick={() => navigator.clipboard.writeText(inviteLink).then(() => setInviteNotice(t.copied))}>{t.copyLink}</button></div>}
+            <h4 className="invite-subheading">{t.pendingInvites}</h4>
+            {invitations.length === 0 ? <p className="small-muted">{t.noInvites}</p> : <div className="invitation-list">{invitations.map(item => <div className="invitation-row" key={item.id}><strong>{item.email}</strong><span>{roleLabel(item.role)}</span><small>{new Date(item.expires_at).toLocaleDateString(language === "fa" ? "fa-IR" : "en-US")}</small></div>)}</div>}
+          </section>}
           {selected && <section className="members-panel">
             <div className="members-heading"><div><h3><Users size={18}/>{t.members}</h3><p>{t.membersHint}</p></div>
               {["owner", "admin"].includes(selected.role) && <button className="secondary-button refresh-button" onClick={() => loadMembers(selected)} disabled={memberBusy}><RefreshCw size={14}/>{t.refresh}</button>}
