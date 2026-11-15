@@ -131,7 +131,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (token) loadWorkspace().catch(() => signOut());
+    if (token) acceptPendingInvitation(token).then(() => loadWorkspace()).catch(() => signOut());
     // Initial session restoration only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
